@@ -2,50 +2,83 @@
 
 Smart Alumni Guidance & Mentorship Platform.
 
-## Overview
-AlumniConnect bridges the gap between students and graduates in the industry. It enables students to find alumni by company, role, skills, and industry, read authentic career journeys, ask questions, and seek mentorship.
+## Architecture
 
-## Phase 1: Frontend Prototype
-Phase 1 focuses entirely on the React frontend prototype with client-side routing, rich mock data, and derived state filtering.
+```
+AlumniConnect/
+│
+├── client/                 # React Frontend (Vite + React Router)
+│   ├── src/
+│   │   ├── components/     # UI components (Navbar, AlumniCard, BackendStatus, etc.)
+│   │   ├── pages/          # Landing, Dashboard, Alumni Directory, Dynamic Profiles, etc.
+│   │   └── data/           # Mock alumni data
+│   └── package.json
+│
+├── server/                 # NestJS Backend API
+│   ├── src/
+│   │   ├── health/         # Health check module (GET /api/health)
+│   │   ├── test-records/   # MongoDB verification module (POST/GET /api/test-records)
+│   │   ├── app.module.ts   # Main app module (Config & Mongoose)
+│   │   └── main.ts         # Bootstrap (/api prefix, CORS, validation pipe)
+│   ├── .env.example        # Environment variables template
+│   └── package.json
+│
+├── .gitignore
+└── README.md
+```
 
-### Features
-- **Landing Page**: Value proposition hero, navigation links, and community highlights.
-- **Find Alumni**: Instant search (by name, company, role, skills) + multi-filtering (Role, Company, Industry).
-- **Alumni Profiles**: Dynamic routes (`/alumni/:id`) with career journeys, skills, advice, and contact details.
-- **Authentication Stubs**: Controlled Login and Signup forms with role selection (Student / Alumni) routing to Dashboard.
-- **Dashboard**: Quick-access hub to directory, personal profile, and Q&A boards.
-- **Discussion Board (Q&A)**: Community Q&A feed with question posting support.
-- **Responsive Modern UI**: Built with custom modern CSS variables and Lucide icons.
+## Phase 2: Backend Foundation
 
-## Tech Stack
-- **Frontend**: React, React Router (`react-router-dom`), Vite
-- **Icons**: Lucide React
-- **Styling**: Vanilla Modern CSS Design System
+### Features Implemented
+- **NestJS Server**: Decoupled, modular architecture with TypeScript.
+- **Global API Prefix**: All endpoints scoped under `/api/...`.
+- **CORS Configured**: Allows cross-origin requests from `http://localhost:5173`.
+- **Global Request Validation**: Enforced via `ValidationPipe` with `class-validator` & `class-transformer`.
+- **Health Check Endpoint**: `GET /api/health` returning live status and timestamps.
+- **MongoDB + Mongoose Integration**: Async configuration connected via `@nestjs/config` & `@nestjs/mongoose`.
+- **Verification Module**: `test-records` demonstrating schema validation, DTOs, and error handling.
+- **Fullstack React Connection**: Live backend status widget integrated directly into the React Dashboard.
+
+---
 
 ## Getting Started
 
-### Prerequisites
-- Node.js (v18 or higher)
-- npm
+### 1. Run Backend Server (NestJS)
 
-### Installation & Run
+```bash
+cd server
+npm install
+npm run start:dev
+```
+- API Base: `http://localhost:5000/api`
+- Health Check: `http://localhost:5000/api/health`
 
-1. Navigate to the client folder:
-   ```bash
-   cd client
-   ```
+### 2. Run Frontend Client (React)
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+cd client
+npm install
+npm run dev
+```
+- Client URL: `http://localhost:5173`
 
-3. Start development server:
-   ```bash
-   npm run dev
-   ```
+---
 
-4. Build for production:
-   ```bash
-   npm run build
-   ```
+## Environment Variables (`server/.env`)
+
+| Variable | Description | Example |
+|---|---|---|
+| `PORT` | Backend listening port | `5000` |
+| `MONGODB_URI` | MongoDB Atlas / Local connection string | `mongodb+srv://<user>:<password>@cluster.mongodb.net/alumniconnect` |
+| `CLIENT_ORIGIN` | Allowed CORS frontend origin | `http://localhost:5173` |
+
+---
+
+## API Endpoints (Phase 2)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/health` | Health check endpoint |
+| `POST` | `/api/test-records` | Create test record (Validates `{ name: string }`) |
+| `GET` | `/api/test-records` | Retrieve all test records |
+| `GET` | `/api/test-records/:id` | Retrieve single test record by ID (404 on missing) |

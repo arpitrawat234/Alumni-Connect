@@ -1,19 +1,23 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Users, User, HelpCircle, ArrowRight, Compass, Sparkles } from 'lucide-react';
+import BackendStatus from '../components/BackendStatus';
 
 export default function DashboardPage() {
   return (
     <div className="container page-wrapper animate-fade-in">
-      <div className="dashboard-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <Sparkles size={18} color="var(--primary)" />
-          <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--primary)' }}>
-            Student & Alumni Hub
-          </span>
+      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <Sparkles size={18} color="var(--primary)" />
+            <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--primary)' }}>
+              Student & Alumni Hub
+            </span>
+          </div>
+          <h1>Welcome Back!</h1>
+          <p>What would you like to do today? Choose an option below to get started.</p>
         </div>
-        <h1>Welcome Back!</h1>
-        <p>What would you like to do today? Choose an option below to get started.</p>
+        <BackendStatus />
       </div>
 
       <div className="dashboard-actions-grid">
