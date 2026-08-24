@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HealthModule } from './health/health.module';
-import { TestRecordsModule } from './test-records/test-records.module';
 
 @Module({
   imports: [
@@ -17,11 +16,11 @@ import { TestRecordsModule } from './test-records/test-records.module';
         const uri = configService.get<string>('MONGODB_URI');
         return {
           uri: uri || 'mongodb://127.0.0.1:27017/alumniconnect',
+          serverSelectionTimeoutMS: 5000,
         };
       },
     }),
     HealthModule,
-    TestRecordsModule,
   ],
 })
 export class AppModule {}
