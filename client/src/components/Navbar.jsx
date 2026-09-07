@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { GraduationCap, Users, MessageSquare, LayoutDashboard, LogIn, UserPlus } from 'lucide-react';
+import { AuthContext } from '../AuthContext';
 
 export default function Navbar() {
+  const { token, logout } = useContext(AuthContext);
+
   return (
     <header className="navbar">
       <div className="container navbar-container">
@@ -38,16 +41,25 @@ export default function Navbar() {
           </ul>
         </nav>
 
-        <div className="navbar-actions">
-          <Link to="/login" className="btn btn-secondary btn-sm">
-            <LogIn size={15} />
-            <span>Login</span>
-          </Link>
-          <Link to="/signup" className="btn btn-primary btn-sm">
-            <UserPlus size={15} />
-            <span>Sign Up</span>
-          </Link>
-        </div>
+          {/* Auth actions */}
+          <div className="navbar-actions">
+            {token ? (
+              <button className="btn btn-secondary btn-sm" onClick={logout}>
+                Logout
+              </button>
+            ) : (
+              <>
+                <Link to="/login" className="btn btn-secondary btn-sm">
+                  <LogIn size={15} />
+                  <span>Login</span>
+                </Link>
+                <Link to="/signup" className="btn btn-primary btn-sm">
+                  <UserPlus size={15} />
+                  <span>Sign Up</span>
+                </Link>
+              </>
+            )}
+          </div>
       </div>
     </header>
   );

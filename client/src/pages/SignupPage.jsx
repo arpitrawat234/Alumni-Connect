@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, UserCheck, GraduationCap, Briefcase } from 'lucide-react';
-
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 export default function SignupPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    role: 'Student' // 'Student' or 'Alumni'
+    role: 'STUDENT' // default role matches backend enum
   });
 
   const handleChange = (e) => {
@@ -23,10 +23,34 @@ export default function SignupPage() {
     setFormData((prev) => ({ ...prev, role }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Phase 1: Prototype navigation without real backend authentication
-    navigate('/dashboard');
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: formData.role,
+          // optional extra fields for student/alumni
+          college: formData.college || '',
+          graduationYear: formData.graduationYear || null,
+          ...(formData.role === 'Student' && { branch: formData.branch || '' }),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Registration failed');
+      // store token
+      localStorage.setItem('jwt', data.accessToken);
+      // optionally store user info
+      localStorage.setItem('user', JSON.stringify(data.user));
+      // navigate to dashboard after successful signup
+      navigate('/dashboard');
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   return (
@@ -90,15 +114,15 @@ export default function SignupPage() {
             <label className="form-label">I am a:</label>
             <div className="role-radio-group">
               <div
-                className={`role-radio-label ${formData.role === 'Student' ? 'selected' : ''}`}
-                onClick={() => handleRoleSelect('Student')}
+                className={`role-radio-label ${formData.role === 'STUDENT' ? 'selected' : ''}`}
+                onClick={() => handleRoleSelect('STUDENT')}
               >
                 <GraduationCap size={16} />
                 <span>Student</span>
               </div>
               <div
-                className={`role-radio-label ${formData.role === 'Alumni' ? 'selected' : ''}`}
-                onClick={() => handleRoleSelect('Alumni')}
+                className={`role-radio-label ${formData.role === 'ALUMNI' ? 'selected' : ''}`}
+                onClick={() => handleRoleSelect('ALUMNI')}
               >
                 <Briefcase size={16} />
                 <span>Alumni</span>
