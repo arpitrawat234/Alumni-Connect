@@ -1,138 +1,210 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { AuthContext } from "../AuthContext";
 import { Save } from 'lucide-react';
+import { AuthContext } from '../AuthContext';
 
-export default function ProfilePage() {
-  const { token } = useContext(AuthContext);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [savedNotice, setSavedNotice] = useState(false);
-
-  // Fetch profile on mount
-  useEffect(() => {
-    if (!token) return; // not authenticated yet
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+const arrayFields = [
+  'skills',
+  'careerInterests',
+  'helpTopics',
+  'servicesOffered',
+];
+
+function parseList(value) {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+export default function ProfilePage() {
+  const { token, user, updateUser } = useContext(AuthContext);
+  const [profile, setProfile] = useState(null);
+  const [listInputs, setListInputs] = useState({});
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [savedNotice, setSavedNotice] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const controller = new AbortController();
     fetch(`${API_BASE}/profiles/me`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
     })
       .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to load profile');
         const data = await res.json();
-        setProfile(data.profile);
+        if (!res.ok) throw new Error(data.message || 'Could not load profile.');
+        setProfile({ ...data.profile, name: data.user.name, email: data.user.email });
+        setCompletionPercentage(data.completionPercentage);
+        setListInputs(Object.fromEntries(
+          arrayFields.map((field) => [field, (data.profile[field] || []).join(', ')]),
+        ));
       })
-      .catch((err) => {
-        console.error(err);
-        alert('Could not load profile.');
+      .catch((loadError) => {
+        if (loadError.name !== 'AbortError') setError(loadError.message);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
   }, [token]);
 
   const handleChange = (field, value) => {
-    setProfile((prev) => ({ ...prev, [field]: value }));
+    setProfile((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!token) return;
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    setSavedNotice(false);
+
+    const payload = {
+      name: profile.name,
+      email: profile.email,
+      college: profile.college,
+      graduationYear: profile.graduationYear ? Number(profile.graduationYear) : null,
+      skills: parseList(listInputs.skills || ''),
+      bio: profile.bio,
+    };
+
+    if (user?.role === 'STUDENT') {
+      payload.branch = profile.branch;
+      payload.careerInterests = parseList(listInputs.careerInterests || '');
+    } else {
+      payload.currentCompany = profile.currentCompany;
+      payload.currentRole = profile.currentRole;
+      payload.industry = profile.industry;
+      payload.location = profile.location;
+      payload.experience = profile.experience;
+      payload.helpTopics = parseList(listInputs.helpTopics || '');
+      payload.servicesOffered = parseList(listInputs.servicesOffered || '');
+    }
+
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/profiles/me`, {
+      const res = await fetch(`${API_BASE}/profiles/me`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(profile),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Update failed');
-      setProfile(data.profile);
+      if (!res.ok) {
+        const message = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+        throw new Error(message || 'Could not save profile.');
+      }
+
+      setProfile({ ...data.profile, name: data.user.name, email: data.user.email });
+      setCompletionPercentage(data.completionPercentage);
+      updateUser(data.user);
+      setListInputs(Object.fromEntries(
+        arrayFields.map((field) => [field, (data.profile[field] || []).join(', ')]),
+      ));
       setSavedNotice(true);
-      setTimeout(() => setSavedNotice(false), 3000);
-    } catch (err) {
-      console.error(err);
-      alert(err.message);
+    } catch (saveError) {
+      setError(saveError.message);
+    } finally {
+      setSaving(false);
     }
   };
 
   if (loading) return <div className="container page-wrapper">Loading profile...</div>;
+  if (!profile) {
+    return <div className="container page-wrapper">{error || 'Profile is unavailable.'}</div>;
+  }
+
+  const renderField = (label, field, options = {}) => (
+    <div className="form-group" key={field}>
+      <label className="form-label" htmlFor={field}>{label}</label>
+      {options.multiline ? (
+        <textarea
+          id={field}
+          rows={options.rows || 3}
+          className="form-input"
+          value={profile[field] || ''}
+          onChange={(event) => handleChange(field, event.target.value)}
+        />
+      ) : (
+        <input
+          id={field}
+          type={options.type || 'text'}
+          className="form-input"
+          value={profile[field] ?? ''}
+          onChange={(event) => handleChange(field, event.target.value)}
+        />
+      )}
+    </div>
+  );
+
+  const renderListField = (label, field) => (
+    <div className="form-group" key={field}>
+      <label className="form-label" htmlFor={field}>{label}</label>
+      <input
+        id={field}
+        className="form-input"
+        value={listInputs[field] || ''}
+        onChange={(event) => setListInputs((current) => ({
+          ...current,
+          [field]: event.target.value,
+        }))}
+        placeholder="Separate items with commas"
+      />
+    </div>
+  );
 
   return (
     <div className="container page-wrapper animate-fade-in" style={{ maxWidth: '800px' }}>
       <div style={{ marginBottom: '2rem' }}>
         <h1>My Profile</h1>
-        <p>This section will allow students and alumni to manage and customize their public profile.</p>
+        <p>Edit your {user?.role === 'ALUMNI' ? 'alumni' : 'student'} profile and matching tags.</p>
+        <p>Profile completion: <strong>{completionPercentage}%</strong></p>
       </div>
 
+      {error && <div className="card" role="alert" style={{ marginBottom: '1rem' }}>{error}</div>}
       {savedNotice && (
-        <div className="badge badge-primary" style={{ display: 'block', padding: '0.75rem 1rem', marginBottom: '1.5rem', borderRadius: 'var(--radius-md)', textAlign: 'center', fontSize: '0.95rem' }}>
-          ✓ Profile changes saved!
+        <div className="badge badge-primary" role="status" style={{ display: 'block', padding: '0.75rem 1rem', marginBottom: '1.5rem', borderRadius: 'var(--radius-md)', textAlign: 'center', fontSize: '0.95rem' }}>
+          Profile changes saved.
         </div>
       )}
 
       <div className="card">
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '2rem' }}>
-            <div
-              style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--primary-light)',
-                color: 'var(--primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: '700',
-                fontSize: '1.5rem',
-              }}
-            >
-              {profile.name ? profile.name.charAt(0).toUpperCase() : ''}
-            </div>
-            <div>
-              <h3>{profile.name}</h3>
-              <p style={{ fontSize: '0.9rem' }}>{profile.roleType} • Batch of {profile.graduationYear}</p>
-            </div>
-          </div>
+          {renderField('Full name', 'name')}
+          {renderField('Email address', 'email', { type: 'email' })}
+          {renderField('College', 'college')}
+          {renderField('Graduation year', 'graduationYear', { type: 'number' })}
+          {renderField('About / bio', 'bio', { multiline: true, rows: 4 })}
+          {renderListField('Skills', 'skills')}
 
-          <div className="form-group">
-            <label className="form-label">Full Name</label>
-            <input type="text" className="form-input" value={profile.name || ''} onChange={(e) => handleChange('name', e.target.value)} />
-          </div>
+          {user?.role === 'STUDENT' ? (
+            <>
+              {renderField('Branch / program', 'branch')}
+              {renderListField('Career interests', 'careerInterests')}
+            </>
+          ) : (
+            <>
+              {renderField('Current company', 'currentCompany')}
+              {renderField('Current role', 'currentRole')}
+              {renderField('Industry', 'industry')}
+              {renderField('Location', 'location')}
+              {renderField('Experience', 'experience', { multiline: true })}
+              {renderListField('Topics you can help with', 'helpTopics')}
+              {renderListField('Mentoring services offered', 'servicesOffered')}
+            </>
+          )}
 
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
-            <input type="email" className="form-input" value={profile.email || ''} onChange={(e) => handleChange('email', e.target.value)} />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Target Role / Designation</label>
-            <input type="text" className="form-input" value={profile.targetRole || ''} onChange={(e) => handleChange('targetRole', e.target.value)} />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">About / Bio</label>
-            <textarea rows={4} className="form-input" value={profile.bio || ''} onChange={(e) => handleChange('bio', e.target.value)} />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Skills & Interests</label>
-            <div className="skills-badge-list" style={{ marginTop: '0.5rem' }}>
-              {profile.skills && profile.skills.map((skill, idx) => (
-                <span key={idx} className="badge badge-primary" style={{ fontSize: '0.85rem' }}>{skill}</span>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginTop: '2rem' }}>
-            <button type="submit" className="btn btn-primary">
-              <Save size={16} />
-              <span>Save Profile Changes</span>
-            </button>
-          </div>
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            <Save size={16} />
+            <span>{saving ? 'Saving...' : 'Save profile'}</span>
+          </button>
         </form>
       </div>
     </div>

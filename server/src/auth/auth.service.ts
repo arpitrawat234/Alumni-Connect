@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
@@ -35,7 +35,6 @@ export class AuthService {
           : VerificationStatus.VERIFIED,
     });
 
-    // Create initial profile shell
     const initialProfileData: any = {
       college: registerDto.college || '',
       graduationYear: registerDto.graduationYear || null,
@@ -45,7 +44,7 @@ export class AuthService {
     }
 
     const { profile, completionPercentage } = await this.profilesService.updateProfile(
-      user._id.toString(),
+      user.id,
       user.role,
       initialProfileData,
     );
@@ -55,7 +54,7 @@ export class AuthService {
     return {
       accessToken: token,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -78,7 +77,7 @@ export class AuthService {
     }
 
     const { profile, completionPercentage } = await this.profilesService.getProfileByUserId(
-      user._id.toString(),
+      user.id,
       user.role,
     );
 
@@ -87,7 +86,7 @@ export class AuthService {
     return {
       accessToken: token,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -100,13 +99,13 @@ export class AuthService {
 
   async getMe(user: UserDocument) {
     const { profile, completionPercentage } = await this.profilesService.getProfileByUserId(
-      user._id.toString(),
+      user.id,
       user.role,
     );
 
     return {
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -119,7 +118,7 @@ export class AuthService {
 
   private generateToken(user: UserDocument): string {
     const payload = {
-      sub: user._id.toString(),
+      sub: user.id,
       email: user.email,
       role: user.role,
     };

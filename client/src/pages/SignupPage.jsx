@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, UserCheck, GraduationCap, Briefcase } from 'lucide-react';
+import { UserPlus, GraduationCap, Briefcase } from 'lucide-react';
+import { AuthContext } from '../AuthContext';
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 export default function SignupPage() {
   const navigate = useNavigate();
+  const { user, login } = useContext(AuthContext);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    role: 'STUDENT' // default role matches backend enum
+    role: 'STUDENT'
   });
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -34,20 +44,14 @@ export default function SignupPage() {
           email: formData.email,
           password: formData.password,
           role: formData.role,
-          // optional extra fields for student/alumni
           college: formData.college || '',
           graduationYear: formData.graduationYear || null,
-          ...(formData.role === 'Student' && { branch: formData.branch || '' }),
+          ...(formData.role === 'STUDENT' && { branch: formData.branch || '' }),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Registration failed');
-      // store token
-      localStorage.setItem('jwt', data.accessToken);
-      // optionally store user info
-      localStorage.setItem('user', JSON.stringify(data.user));
-      // navigate to dashboard after successful signup
-      navigate('/dashboard');
+      login(data.accessToken, data.user);
     } catch (err) {
       alert(err.message);
     }

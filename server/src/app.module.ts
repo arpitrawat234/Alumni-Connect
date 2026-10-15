@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule } from '@nestjs/config';
 import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { AuthModule } from './auth/auth.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { QuestionsModule } from './questions/questions.module';
 
 @Module({
   imports: [
@@ -12,21 +13,12 @@ import { AuthModule } from './auth/auth.module';
       isGlobal: true,
       envFilePath: ['.env', '.env.example'],
     }),
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => {
-        const uri = configService.get<string>('MONGODB_URI');
-        return {
-          uri: uri || 'mongodb://127.0.0.1:27017/alumniconnect',
-          serverSelectionTimeoutMS: 5000,
-        };
-      },
-    }),
+    PrismaModule,
     HealthModule,
     UsersModule,
     ProfilesModule,
     AuthModule,
+    QuestionsModule,
   ],
 })
 export class AppModule {}

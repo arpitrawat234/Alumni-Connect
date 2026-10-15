@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ALUMNI
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id                 String             @id @default(cuid())
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  name               String
+  email              String             @unique
+  passwordHash       String
+  role               UserRole           @default(STUDENT)
+  verificationStatus VerificationStatus @default(VERIFIED)
+  studentProfile     StudentProfile?
+  alumniProfile      AlumniProfile?
+  authoredQuestions  Question[]         @relation("QuestionAuthor")
+  targetedQuestions  Question[]         @relation("QuestionTargetAlumni")
+  answers            Answer[]           @relation("AnswerAuthor")
+  comments           QuestionComment[]
+  questionMentions   QuestionMention[]
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  college         String   @default("")
+  branch          String   @default("")
+  graduationYear  Int?
+  skills          String[] @default([])
+  careerInterests String[] @default([])
+  bio             String   @default("")
+
+  @@map("student_profiles")
+}
+
+model AlumniProfile {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  college         String   @default("")
+  graduationYear  Int?
+  currentCompany  String   @default("")
+  currentRole     String   @default("")
+  industry        String   @default("")
+  location        String   @default("")
+  skills          String[] @default([])
+  bio             String   @default("")
+  experience      String   @default("")
+  helpTopics      String[] @default([])
+  servicesOffered String[] @default([])
+
+  @@map("alumni_profiles")
+}
+
+model Question {
+  id             String            @id @default(cuid())
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  title          String
+  body           String
+  tags           String[]
+  authorId       String
+  author         User              @relation("QuestionAuthor", fields: [authorId], references: [id])
+  targetAlumniId String?
+  targetAlumni   User?             @relation("QuestionTargetAlumni", fields: [targetAlumniId], references: [id])
+  mentions       QuestionMention[]
+  answers        Answer[]
+  comments       QuestionComment[]
+
+  @@index([createdAt])
+  @@index([authorId])
+  @@index([targetAlumniId])
+  @@map("questions")
+}
+
+model QuestionMention {
+  questionId String
+  userId     String
+  createdAt  DateTime @default(now())
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([questionId, userId])
+  @@index([userId])
+  @@map("question_mentions")
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  body       String
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation("AnswerAuthor", fields: [authorId], references: [id])
+
+  @@index([questionId, createdAt])
+  @@index([authorId])
+  @@map("answers")
+}
+
+model QuestionComment {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  body       String
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, createdAt])
+  @@index([authorId])
+  @@map("question_comments")
+}

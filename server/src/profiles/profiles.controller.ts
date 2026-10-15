@@ -11,6 +11,7 @@ import { ProfilesService } from './profiles.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GetUser } from '../auth/get-user.decorator';
 import { UserDocument } from '../users/user.schema';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Controller()
 export class ProfilesController {
@@ -19,13 +20,27 @@ export class ProfilesController {
   @Get('profiles/me')
   @UseGuards(JwtAuthGuard)
   getMyProfile(@GetUser() user: UserDocument) {
-    return this.profilesService.getProfileByUserId(user._id.toString(), user.role);
+    const userId = user.id || user._id || '';
+    return this.profilesService.getProfileByUserId(userId, user.role);
   }
 
   @Put('profiles/me')
   @UseGuards(JwtAuthGuard)
-  updateMyProfile(@GetUser() user: UserDocument, @Body() updateDto: any) {
-    return this.profilesService.updateProfile(user._id.toString(), user.role, updateDto);
+  updateMyProfile(@GetUser() user: UserDocument, @Body() updateDto: UpdateProfileDto) {
+    const userId = user.id || user._id || '';
+    return this.profilesService.updateProfile(userId, user.role, updateDto);
+  }
+
+  @Get('profiles/recommendations')
+  @UseGuards(JwtAuthGuard)
+  getRecommendations(@GetUser() user: UserDocument) {
+    return this.profilesService.getRecommendations(user.id || user._id || '');
+  }
+
+  @Get('people')
+  @UseGuards(JwtAuthGuard)
+  findPeople(@GetUser() user: UserDocument) {
+    return this.profilesService.findPeople(user.id || user._id || '');
   }
 
   @Get('alumni')

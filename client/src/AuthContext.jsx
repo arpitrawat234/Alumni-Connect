@@ -8,6 +8,7 @@ export const AuthContext = createContext({
   token: null,
   loading: true,
   login: async () => {},
+  updateUser: () => {},
   logout: () => {},
 });
 
@@ -55,6 +56,11 @@ export const AuthProvider = ({ children }) => {
     navigate('/dashboard');
   }, [navigate]);
 
+  const updateUser = useCallback((userInfo) => {
+    localStorage.setItem('user', JSON.stringify(userInfo));
+    setUser(userInfo);
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem('jwt');
     localStorage.removeItem('user');
@@ -64,7 +70,7 @@ export const AuthProvider = ({ children }) => {
   }, [navigate]);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,19 +1,11 @@
-import mongoose from 'mongoose';
+﻿import { PrismaClient, UserRole, VerificationStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { User, UserRole, VerificationStatus, UserSchema } from '../users/user.schema';
-import { AlumniProfile, AlumniProfileSchema } from '../profiles/schemas/alumni-profile.schema';
-import { StudentProfile, StudentProfileSchema } from '../profiles/schemas/student-profile.schema';
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  console.error('❌ MONGODB_URI is not defined in server/.env');
-  process.exit(1);
-}
+const prisma = new PrismaClient();
 
 const seedAlumniData = [
   {
@@ -56,12 +48,7 @@ const seedAlumniData = [
       skills: ['Java', 'Spring Boot', 'AWS', 'DynamoDB', 'Distributed Systems', 'Kafka'],
       bio: 'Backend specialist architecting high-throughput inventory management microservices handling millions of daily transactions at AWS.',
       experience: '4 years experience in distributed backend architectures.',
-      helpTopics: [
-        'Technical Interviews',
-        'System Design Basics',
-        'Resume Review',
-        'Placement Preparation',
-      ],
+      helpTopics: ['Technical Interviews', 'System Design Basics', 'Resume Review', 'Placement Preparation'],
       servicesOffered: ['1-on-1 Sessions', 'Q&A', 'Group Sessions'],
     },
   },
@@ -80,12 +67,7 @@ const seedAlumniData = [
       skills: ['React', 'Next.js', 'Web Performance', 'TypeScript', 'GraphQL'],
       bio: 'UI architect obsessing over sub-millisecond web rendering, interactive graphics, accessibility, and modern React ecosystems.',
       experience: '5 years crafting high-performance user interfaces at scale.',
-      helpTopics: [
-        'Frontend Engineering',
-        'Mock Interviews',
-        'Resume Review',
-        'Career Guidance',
-      ],
+      helpTopics: ['Frontend Engineering', 'Mock Interviews', 'Resume Review', 'Career Guidance'],
       servicesOffered: ['1-on-1 Sessions', 'Resume Reviews'],
     },
   },
@@ -104,12 +86,7 @@ const seedAlumniData = [
       skills: ['Python', 'Machine Learning', 'PyTorch', 'SQL', 'Quantitative Modeling'],
       bio: 'Building quantitative trading models, algorithmic risk mitigation systems, and automated financial forecasting pipelines.',
       experience: '3 years in Quantitative Analytics and Financial Machine Learning.',
-      helpTopics: [
-        'Higher Studies',
-        'Technical Interviews',
-        'Career Guidance',
-        'Resume Review',
-      ],
+      helpTopics: ['Higher Studies', 'Technical Interviews', 'Career Guidance', 'Resume Review'],
       servicesOffered: ['1-on-1 Sessions', 'Q&A'],
     },
   },
@@ -128,12 +105,7 @@ const seedAlumniData = [
       skills: ['React', 'GraphQL', 'Java', 'Docker', 'Kubernetes', 'Microservices'],
       bio: 'Contributing to Jira Cloud Core team. Enthusiastic about CI/CD, developer tooling, and modern distributed systems.',
       experience: '2 years working on Jira real-time collaborative editors.',
-      helpTopics: [
-        'Placement Preparation',
-        'DSA',
-        'HR Interviews',
-        'Mock Interviews',
-      ],
+      helpTopics: ['Placement Preparation', 'DSA', 'HR Interviews', 'Mock Interviews'],
       servicesOffered: ['1-on-1 Sessions', 'Resume Reviews', 'Q&A'],
     },
   },
@@ -152,12 +124,7 @@ const seedAlumniData = [
       skills: ['Product Strategy', 'User Research', 'Agile', 'Roadmapping', 'Data Analytics'],
       bio: 'Helping Fortune 500 enterprises navigate digital transformation and user-centric product growth loops.',
       experience: '6 years in Technology Strategy and Digital Product Leadership.',
-      helpTopics: [
-        'Career Guidance',
-        'HR Interviews',
-        'Higher Studies',
-        'Resume Review',
-      ],
+      helpTopics: ['Career Guidance', 'HR Interviews', 'Higher Studies', 'Resume Review'],
       servicesOffered: ['1-on-1 Sessions', 'Group Sessions', 'Q&A'],
     },
   },
@@ -176,12 +143,7 @@ const seedAlumniData = [
       skills: ['Go', 'Kafka', 'Redis', 'gRPC', 'Kubernetes', 'Distributed Systems'],
       bio: 'Engineering high-frequency geospatial dispatch matching engines and surge pricing algorithms handling peak city traffic.',
       experience: '4 years building high concurrency Golang backend microservices.',
-      helpTopics: [
-        'DSA',
-        'Technical Interviews',
-        'Placement Preparation',
-        'Mock Interviews',
-      ],
+      helpTopics: ['DSA', 'Technical Interviews', 'Placement Preparation', 'Mock Interviews'],
       servicesOffered: ['1-on-1 Sessions', 'Resume Reviews'],
     },
   },
@@ -200,12 +162,7 @@ const seedAlumniData = [
       skills: ['C++', 'Python', 'LLMs', 'Information Retrieval', 'DSA'],
       bio: 'Working on Google Search ranking and natural language semantic retrieval pipelines. AI researcher and competitive programmer.',
       experience: '3 years in Google Core Search ranking algorithms.',
-      helpTopics: [
-        'DSA',
-        'Competitive Programming',
-        'Technical Interviews',
-        'Mock Interviews',
-      ],
+      helpTopics: ['DSA', 'Competitive Programming', 'Technical Interviews', 'Mock Interviews'],
       servicesOffered: ['1-on-1 Sessions', 'Q&A'],
     },
   },
@@ -213,70 +170,123 @@ const seedAlumniData = [
 
 async function seed() {
   console.log('🌱 Starting AlumniConnect Database Seeder...');
-  await mongoose.connect(MONGODB_URI as string);
-  console.log('✓ Connected to MongoDB Atlas');
 
-  const UserModel = mongoose.model(User.name, UserSchema);
-  const AlumniProfileModel = mongoose.model(AlumniProfile.name, AlumniProfileSchema);
-  const StudentProfileModel = mongoose.model(StudentProfile.name, StudentProfileSchema);
+  for (const entry of seedAlumniData) {
+    const existingUser = await prisma.user.findUnique({ where: { email: entry.email } });
+    if (existingUser) {
+      continue;
+    }
 
-  // Clear existing seeded users
-  const defaultPasswordHash = await bcrypt.hash('Password123!', 10);
+    const user = await prisma.user.create({
+      data: {
+        name: entry.name,
+        email: entry.email,
+        passwordHash: await bcrypt.hash('Password123!', 10),
+        role: entry.role,
+        verificationStatus: entry.verificationStatus,
+      },
+    });
 
-  // Seed sample student
-  const sampleStudentEmail = 'student@alumniconnect.com';
-  let studentUser = await UserModel.findOne({ email: sampleStudentEmail });
-  if (!studentUser) {
-    studentUser = await UserModel.create({
-      name: 'Arpit Sharma (Student)',
-      email: sampleStudentEmail,
-      passwordHash: defaultPasswordHash,
+    await prisma.alumniProfile.create({
+      data: {
+        userId: user.id,
+        college: entry.profile.college,
+        graduationYear: entry.profile.graduationYear,
+        currentCompany: entry.profile.currentCompany,
+        currentRole: entry.profile.currentRole,
+        industry: entry.profile.industry,
+        location: entry.profile.location,
+        skills: entry.profile.skills,
+        bio: entry.profile.bio,
+        experience: entry.profile.experience,
+        helpTopics: entry.profile.helpTopics,
+        servicesOffered: entry.profile.servicesOffered,
+      },
+    });
+  }
+
+  const studentUser = await prisma.user.upsert({
+    where: { email: 'student@alumniconnect.com' },
+    update: {},
+    create: {
+      name: 'Arpit Rawat',
+      email: 'student@alumniconnect.com',
+      passwordHash: await bcrypt.hash('Password123!', 10),
       role: UserRole.STUDENT,
       verificationStatus: VerificationStatus.VERIFIED,
-    });
-    await StudentProfileModel.create({
-      userId: studentUser._id,
-      college: 'Maharaja Agrasen Institute of Technology',
-      branch: 'Computer Science and Engineering',
+    },
+  });
+
+  await prisma.studentProfile.upsert({
+    where: { userId: studentUser.id },
+    update: {
+      college: 'Maharaja Agrasen Institute of Technology (MAIT)',
+      branch: 'Computer Science',
       graduationYear: 2026,
-      skills: ['React', 'JavaScript', 'Node.js', 'Data Structures', 'Git'],
-      careerInterests: ['Software Engineering', 'Full Stack Development', 'Cloud'],
-      bio: 'Pre-final year CSE student actively preparing for product company placements.',
+      skills: ['React', 'Node.js', 'TypeScript', 'PostgreSQL'],
+      careerInterests: ['Full Stack Development', 'Product Engineering'],
+      bio: 'Final-year student building career-ready software and learning from alumni mentors.',
+    },
+    create: {
+      userId: studentUser.id,
+      college: 'Maharaja Agrasen Institute of Technology (MAIT)',
+      branch: 'Computer Science',
+      graduationYear: 2026,
+      skills: ['React', 'Node.js', 'TypeScript', 'PostgreSQL'],
+      careerInterests: ['Full Stack Development', 'Product Engineering'],
+      bio: 'Final-year student building career-ready software and learning from alumni mentors.',
+    },
+  });
+
+  const aman = await prisma.user.findUnique({
+    where: { email: 'aman.sharma@microsoft.com' },
+  });
+
+  const demoQuestion = aman
+    ? await prisma.question.findFirst({
+        where: {
+          title: 'How should I structure my preparation for software placement interviews?',
+          authorId: studentUser.id,
+        },
+        select: { id: true },
+      })
+    : null;
+
+  if (aman && !demoQuestion) {
+    await prisma.question.create({
+      data: {
+        title: 'How should I structure my preparation for software placement interviews?',
+        body: 'I am balancing coursework and projects. What is a practical weekly plan for DSA, project preparation, and mock interviews?',
+        tags: ['Placements', 'DSA', 'Interview preparation'],
+        author: { connect: { id: studentUser.id } },
+        targetAlumni: { connect: { id: aman.id } },
+        mentions: {
+          create: [{ user: { connect: { id: aman.id } } }],
+        },
+        answers: {
+          create: [{
+            body: 'Set a steady schedule: practice a few focused DSA problems each week, revise patterns, and reserve time to explain one project clearly. Add mock interviews once your fundamentals feel consistent.',
+            author: { connect: { id: aman.id } },
+          }],
+        },
+        comments: {
+          create: [{
+            body: 'A weekly review of mistakes helped me adjust the plan without overloading my semester.',
+            author: { connect: { id: studentUser.id } },
+          }],
+        },
+      },
     });
-    console.log(`✓ Seeded Demo Student: ${sampleStudentEmail}`);
   }
 
-  // Seed verified alumni
-  for (const item of seedAlumniData) {
-    let alumniUser = await UserModel.findOne({ email: item.email });
-    if (!alumniUser) {
-      alumniUser = await UserModel.create({
-        name: item.name,
-        email: item.email,
-        passwordHash: defaultPasswordHash,
-        role: item.role,
-        verificationStatus: item.verificationStatus,
-      });
-
-      await AlumniProfileModel.create({
-        userId: alumniUser._id,
-        ...item.profile,
-      });
-      console.log(`✓ Seeded Verified Alumni: ${item.name} (${item.profile.currentCompany})`);
-    }
-  }
-
-  console.log('\n🎉 Seeding completed successfully!');
-  console.log('Credentials for all demo accounts:');
-  console.log('Password: Password123!');
-  console.log('Demo Student: student@alumniconnect.com');
-  console.log('Demo Alumni: aman.sharma@microsoft.com, priya.verma@amazon.com, etc.');
-
-  await mongoose.disconnect();
-  process.exit(0);
+  console.log('✅ AlumniConnect seeded successfully');
 }
 
-seed().catch((err) => {
-  console.error('❌ Seeding failed:', err);
-  process.exit(1);
-});
+seed()
+  .catch((error) => {
+    console.error('❌ Seed failed:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

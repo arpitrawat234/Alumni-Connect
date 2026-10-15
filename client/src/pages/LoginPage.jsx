@@ -1,16 +1,23 @@
-import React, { useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
+import { AuthContext } from '../AuthContext';
 
-// Base API URL – adjust via env var if needed
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { user, login } = useContext(AuthContext);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,9 +34,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
-      localStorage.setItem('jwt', data.accessToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      navigate('/dashboard');
+      login(data.accessToken, data.user);
     } catch (err) {
       alert(err.message);
     }
